@@ -44,7 +44,7 @@ public class WorkshopApplication {
         return new Tasklet() {
             @Override
             public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
-                System.out.println("Hello Spring Batch. First Step Done! execution date = " /*+ executionDate*/);
+                System.out.println("Hello Spring Batch. First Step Done!");
                 return RepeatStatus.FINISHED;
             }
         };

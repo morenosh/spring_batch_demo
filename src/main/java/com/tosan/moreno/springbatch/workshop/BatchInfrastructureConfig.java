@@ -31,9 +31,50 @@ public class BatchInfrastructureConfig {
     }
 
     @Bean
-    @BatchDataSource
     public DataSource batchDataSource(
             @Qualifier("batchDataSourceProperties") DataSourceProperties batchDataSourceProperties) {
         return batchDataSourceProperties.initializeDataSourceBuilder().build();
+    }
+
+    @Bean
+    @Primary
+    public BatchDataSourceScriptDatabaseInitializer customBatchScriptDatabaseInitializer(@Qualifier("batchDataSource") DataSource secondDataSource,
+                                                                                         BatchProperties properties) {
+        return new BatchDataSourceScriptDatabaseInitializer(secondDataSource, properties.getJdbc());
+    }
+
+    @Bean
+    @Primary
+    public JobRepository customJobRepository(@Qualifier("batchDataSource") DataSource batchDataSource, PlatformTransactionManager transactionManager)
+            throws Exception {
+        JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
+        factory.setDataSource(batchDataSource);
+        factory.setTransactionManager(transactionManager);
+        factory.afterPropertiesSet();
+        return factory.getObject();
+    }
+
+    @Bean
+    @Primary
+    public JobExplorer customJobExplorer(@Qualifier("batchDataSource") DataSource batchDataSource, PlatformTransactionManager transactionManager) {
+        JobExplorerFactoryBean jobExplorerFactoryBean = new JobExplorerFactoryBean();
+        jobExplorerFactoryBean.setDataSource(batchDataSource);
+        jobExplorerFactoryBean.setTransactionManager(transactionManager);
+        jobExplorerFactoryBean.setJdbcOperations(new JdbcTemplate(batchDataSource));
+        try {
+            jobExplorerFactoryBean.afterPropertiesSet();
+            return jobExplorerFactoryBean.getObject();
+        } catch (Exception e) {
+            throw new BatchConfigurationException("Unable to configure the default job explorer", e);
+        }
+    }
+
+    @Bean
+    @Primary
+    public JobLauncher customJobLauncher(@Qualifier("customJobRepository") JobRepository jobRepository) throws Exception {
+        TaskExecutorJobLauncher jobLauncher = new TaskExecutorJobLauncher();
+        jobLauncher.setJobRepository(jobRepository);
+        jobLauncher.afterPropertiesSet();
+        return jobLauncher;
     }
 }
